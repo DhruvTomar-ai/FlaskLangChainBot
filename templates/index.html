@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <style>
+        .message.user {
+            text-align: right;
+            background-color: #daf1da;
+            padding: 8px;
+            margin: 5px;
+            border-radius: 8px;
+        }
+        .message.bot {
+            text-align: left;
+            background-color: #f1f0f0;
+            padding: 8px;
+            margin: 5px;
+            border-radius: 8px;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        .chat-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .chat-input-area {
+            display: flex;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        .chat-input-area input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 1rem;
+        }
+        .chat-input-area button {
+            padding: 10px 15px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">AI Chatbot</div>
+
+        <!-- Chat Messages Display -->
+        <div class="chat-messages" id="chat-messages">
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="message {{ msg.sender }}">
+                        {{ msg.text | safe }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Single form with Send and Speak buttons -->
+        <form id="chat-form" class="chat-input-area" method="POST" action="/">
+            <input type="text" name="user_input" id="user_input" autocomplete="off" placeholder="Type your message..." required />
+            <button type="submit" id="send-btn">Send</button>
+            <button type="button" id="speak-btn">🔊 Speak</button>
+        </form>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user_input');
+        const speakBtn = document.getElementById('speak-btn');
+
+        // Scroll to bottom when page loads
+        if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Handle Send button (regular form submit)
+        chatForm.addEventListener('submit', function(e) {
+            // Let the form submit normally (page reload)
+        });
+
+        // Handle Speak button with AJAX and client-side speech
+        speakBtn.addEventListener('click', async () => {
+            const text = userInput.value.trim();
+            if (!text) return alert("Please enter some text to speak.");
+
+            try {
+                const formData = new FormData();
+                formData.append('user_input', text);
+
+                const response = await fetch('/speak', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) throw new Error("Server error");
+
+                const data = await response.json();
+                const botResponse = data.bot_response;
+
+                // Append user and bot messages to chat
+                appendMessage(text, 'user');
+                appendMessage(botResponse, 'bot');
+
+                // Scroll down
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // Speak bot response
+                speakText(botResponse);
+
+                // Clear input box
+                userInput.value = '';
+
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        });
+
+        function appendMessage(text, sender) {
+            const div = document.createElement('div');
+            div.className = 'message ' + sender;
+            div.textContent = text;
+            chatMessages.appendChild(div);
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1;
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert('Speech synthesis not supported in your browser.');
+            }
+        }
+    </script>
+</body>
+</html>
